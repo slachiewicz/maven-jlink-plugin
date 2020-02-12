@@ -95,7 +95,7 @@
     <dependency>
       <groupId>org.codehaus.plexus</groupId>
       <artifactId>plexus-archiver</artifactId>
-      <version>4.1.0</version>
+      <version>4.2.1</version>
     </dependency>
     <dependency>
       <groupId>org.codehaus.plexus</groupId>
@@ -145,7 +145,7 @@
                       <exclude>org.ow2.asm:asm</exclude>
                     </excludes>
                   </enforceBytecodeVersion>
-                  <requireSameVersions />
+                  <requireSameVersions/>
                 </rules>
               </configuration>
             </execution>
@@ -196,7 +196,7 @@
                 <mockRepo>
                   <source>src/it/mrm/repository</source>
                 </mockRepo>
-                <proxyRepo />
+                <proxyRepo/>
               </repositories>
             </configuration>
           </plugin>
