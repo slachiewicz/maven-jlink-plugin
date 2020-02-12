@@ -90,7 +90,7 @@
     <dependency>
       <groupId>org.apache.maven</groupId>
       <artifactId>maven-archiver</artifactId>
-      <version>3.4.0</version>
+      <version>3.5.0</version>
     </dependency>
     <dependency>
       <groupId>org.codehaus.plexus</groupId>
@@ -145,7 +145,7 @@
                       <exclude>org.ow2.asm:asm</exclude>
                     </excludes>
                   </enforceBytecodeVersion>
-                  <requireSameVersions />
+                  <requireSameVersions/>
                 </rules>
               </configuration>
             </execution>
@@ -196,7 +196,7 @@
                 <mockRepo>
                   <source>src/it/mrm/repository</source>
                 </mockRepo>
-                <proxyRepo />
+                <proxyRepo/>
               </repositories>
             </configuration>
           </plugin>
