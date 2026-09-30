@@ -43,8 +43,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.logging.Log;
+import org.apache.maven.api.plugin.Log;
+import org.apache.maven.api.plugin.MojoException;
 
 abstract class AbstractJLinkExecutor {
     protected static final String JMODS = "jmods";
@@ -64,7 +64,7 @@ abstract class AbstractJLinkExecutor {
 
     public abstract Optional<File> getJmodsFolder(/* nullable */ File sourceJdkModules);
 
-    public abstract int executeJlink(List<String> jlinkArgs) throws MojoExecutionException;
+    public abstract int executeJlink(List<String> jlinkArgs) throws MojoException;
 
     public void addAllModules(Collection<String> modulesToAdd) {
         this.modulesToAdd.addAll(modulesToAdd);

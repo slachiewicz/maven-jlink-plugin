@@ -39,7 +39,7 @@ package org.apache.maven.plugins.jlink;
 
 import java.io.File;
 
-import org.apache.maven.plugin.logging.Log;
+import org.apache.maven.api.plugin.Log;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

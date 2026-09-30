@@ -38,22 +38,24 @@ package org.apache.maven.plugins.jlink;
  */
 
 import java.io.File;
-import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import org.apache.maven.execution.MavenSession;
-import org.apache.maven.plugin.AbstractMojo;
-import org.apache.maven.plugins.annotations.Parameter;
-import org.apache.maven.project.MavenProject;
-import org.apache.maven.toolchain.Toolchain;
-import org.apache.maven.toolchain.ToolchainManager;
+import org.apache.maven.api.Project;
+import org.apache.maven.api.Session;
+import org.apache.maven.api.Toolchain;
+import org.apache.maven.api.di.Inject;
+import org.apache.maven.api.plugin.Log;
+import org.apache.maven.api.plugin.Mojo;
+import org.apache.maven.api.plugin.annotations.Parameter;
+import org.apache.maven.api.services.ToolchainManager;
+import org.apache.maven.api.services.ToolchainManagerException;
 
 /**
  * @author Karl Heinz Marbaise <a href="mailto:khmarbaise@apache.org">khmarbaise@apache.org</a>
  */
-public abstract class AbstractJLinkMojo extends AbstractMojo {
+public abstract class AbstractJLinkMojo implements Mojo {
     /**
      * <p>
      * Specify the requirements for this JDK toolchain. This overrules the toolchain selected by the
@@ -64,16 +66,20 @@ public abstract class AbstractJLinkMojo extends AbstractMojo {
     @Parameter
     private Map<String, String> jdkToolchain;
 
-    @Parameter(defaultValue = "${project}", readonly = true, required = true)
-    private MavenProject project;
+    @Inject
+    private Project project;
 
-    @Parameter(defaultValue = "${session}", readonly = true, required = true)
-    private MavenSession session;
+    @Inject
+    private Session session;
 
-    private final ToolchainManager toolchainManager;
+    @Inject
+    private ToolchainManager toolchainManager;
 
-    public AbstractJLinkMojo(ToolchainManager toolchainManager) {
-        this.toolchainManager = toolchainManager;
+    @Inject
+    private Log log;
+
+    protected Log getLog() {
+        return log;
     }
 
     /**
@@ -91,37 +97,32 @@ public abstract class AbstractJLinkMojo extends AbstractMojo {
         Toolchain tc = null;
 
         if (jdkToolchain != null) {
-            // Maven 3.3.1 has plugin execution scoped Toolchain Support
             try {
-                Method getToolchainsMethod = toolchainManager
-                        .getClass()
-                        .getMethod("getToolchains", MavenSession.class, String.class, Map.class);
+                List<Toolchain> tcs = toolchainManager.getToolchains(getSession(), "jdk", jdkToolchain);
 
-                @SuppressWarnings("unchecked")
-                List<Toolchain> tcs = (List<Toolchain>)
-                        getToolchainsMethod.invoke(toolchainManager, getSession(), "jdk", jdkToolchain);
-
-                if (tcs != null && tcs.size() > 0) {
+                if (tcs != null && !tcs.isEmpty()) {
                     tc = tcs.get(0);
                 }
-            } catch (ReflectiveOperationException | SecurityException | IllegalArgumentException e) {
+            } catch (ToolchainManagerException e) {
                 // ignore
             }
         }
 
         if (tc == null) {
             // TODO: Check if we should make the type configurable?
-            tc = toolchainManager.getToolchainFromBuildContext("jdk", getSession());
+            tc = toolchainManager
+                    .getToolchainFromBuildContext(getSession(), "jdk")
+                    .orElse(null);
         }
 
         return Optional.ofNullable(tc);
     }
 
-    protected MavenProject getProject() {
+    protected Project getProject() {
         return project;
     }
 
-    protected MavenSession getSession() {
+    protected Session getSession() {
         return session;
     }
 

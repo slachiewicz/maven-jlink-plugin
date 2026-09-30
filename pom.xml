@@ -28,7 +28,7 @@
   </parent>
 
   <artifactId>maven-jlink-plugin</artifactId>
-  <version>3.3.1-SNAPSHOT</version>
+  <version>4.0.0-beta-1-SNAPSHOT</version>
   <packaging>maven-plugin</packaging>
 
   <name>Apache Maven JLink Plugin</name>
@@ -37,7 +37,7 @@
   <inceptionYear>2016</inceptionYear>
 
   <prerequisites>
-    <maven>3.6.3</maven>
+    <maven>${mavenVersion}</maven>
   </prerequisites>
 
   <scm>
@@ -63,28 +63,30 @@
   </distributionManagement>
 
   <properties>
-    <mavenVersion>3.10.0</mavenVersion>
-    <javaVersion>11</javaVersion>
+    <mavenVersion>4.0.0-rc-7</mavenVersion>
+    <javaVersion>17</javaVersion>
+    <mavenPluginPluginVersion>4.0.0-beta-1</mavenPluginPluginVersion>
+    <version.maven-plugin-tools>${mavenPluginPluginVersion}</version.maven-plugin-tools>
     <project.build.outputTimestamp>2026-03-09T18:54:07Z</project.build.outputTimestamp>
   </properties>
 
   <dependencies>
-    <dependency>
-      <groupId>org.apache.maven.plugin-tools</groupId>
-      <artifactId>maven-plugin-annotations</artifactId>
-      <version>${version.maven-plugin-tools}</version>
-      <scope>provided</scope>
-    </dependency>
     <!-- Maven -->
     <dependency>
       <groupId>org.apache.maven</groupId>
-      <artifactId>maven-plugin-api</artifactId>
+      <artifactId>maven-api-core</artifactId>
       <version>${mavenVersion}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.maven</groupId>
-      <artifactId>maven-core</artifactId>
+      <artifactId>maven-api-di</artifactId>
+      <version>${mavenVersion}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.maven</groupId>
+      <artifactId>maven-api-annotations</artifactId>
       <version>${mavenVersion}</version>
       <scope>provided</scope>
     </dependency>
@@ -94,9 +96,9 @@
       <version>3.5.0</version>
     </dependency>
     <dependency>
-      <groupId>org.apache.maven</groupId>
+      <groupId>org.apache.maven.shared</groupId>
       <artifactId>maven-archiver</artifactId>
-      <version>3.6.6</version>
+      <version>4.0.0-beta-5</version>
     </dependency>
     <dependency>
       <groupId>org.codehaus.plexus</groupId>
@@ -104,9 +106,14 @@
       <version>4.14.0</version>
     </dependency>
     <dependency>
-      <groupId>org.codehaus.plexus</groupId>
-      <artifactId>plexus-java</artifactId>
-      <version>1.6.0</version>
+      <groupId>org.sonatype.plexus</groupId>
+      <artifactId>plexus-build-api</artifactId>
+      <version>0.0.7</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.sisu</groupId>
+      <artifactId>org.eclipse.sisu.plexus</artifactId>
+      <version>1.1.0</version>
     </dependency>
     <dependency>
       <groupId>commons-io</groupId>
@@ -116,25 +123,7 @@
     <dependency>
       <groupId>org.apache.maven.shared</groupId>
       <artifactId>maven-filtering</artifactId>
-      <version>3.5.1</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.maven</groupId>
-      <artifactId>maven-model</artifactId>
-      <version>${mavenVersion}</version>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.maven</groupId>
-      <artifactId>maven-artifact</artifactId>
-      <version>${mavenVersion}</version>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>javax.inject</groupId>
-      <artifactId>javax.inject</artifactId>
-      <version>1</version>
-      <scope>provided</scope>
+      <version>4.0.0-beta-1</version>
     </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
@@ -186,6 +175,10 @@
             <configuration>
               <failOnWarning>true</failOnWarning>
               <ignoredDependencies>org.junit.jupiter:junit-jupiter:*</ignoredDependencies>
+              <!-- provides org.codehaus.plexus.logging, which plexus-build-api needs at run time -->
+              <ignoredUnusedDeclaredDependencies>
+                <ignoredUnusedDeclaredDependency>org.eclipse.sisu:org.eclipse.sisu.plexus</ignoredUnusedDeclaredDependency>
+              </ignoredUnusedDeclaredDependencies>
             </configuration>
           </execution>
         </executions>
