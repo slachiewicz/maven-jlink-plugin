@@ -45,9 +45,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.spi.ToolProvider;
 
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.logging.Log;
-import org.apache.maven.toolchain.Toolchain;
+import org.apache.maven.api.Toolchain;
+import org.apache.maven.api.plugin.Log;
+import org.apache.maven.api.plugin.MojoException;
 
 /**
  * JDK9+ executor for jlink.
@@ -68,7 +68,7 @@ class JLinkExecutor extends AbstractJLinkToolchainExecutor {
     }
 
     @Override
-    public int executeJlink(List<String> jlinkArgs) throws MojoExecutionException {
+    public int executeJlink(List<String> jlinkArgs) throws MojoException {
         if (getToolchain().isPresent()) {
             return super.executeJlink(jlinkArgs);
         }
@@ -112,7 +112,7 @@ class JLinkExecutor extends AbstractJLinkToolchainExecutor {
                         .append('\n')
                         .append('\n');
 
-                throw new MojoExecutionException(msg.toString());
+                throw new MojoException(msg.toString());
             }
 
             if (output != null && !output.isBlank()) {
@@ -124,7 +124,7 @@ class JLinkExecutor extends AbstractJLinkToolchainExecutor {
 
             return exitCode;
         } catch (IOException e) {
-            throw new MojoExecutionException("Unable to execute jlink command: " + e.getMessage(), e);
+            throw new MojoException("Unable to execute jlink command: " + e.getMessage(), e);
         }
     }
 

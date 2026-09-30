@@ -18,40 +18,33 @@
  */
 package org.apache.maven.plugins.jlink;
 
+import javax.tools.ToolProvider;
+
 import java.io.File;
+import java.lang.module.ModuleDescriptor;
 import java.lang.reflect.Field;
-import java.util.Collections;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.Optional;
 
-import org.apache.maven.artifact.Artifact;
-import org.apache.maven.artifact.DefaultArtifact;
-import org.apache.maven.artifact.handler.DefaultArtifactHandler;
-import org.apache.maven.artifact.versioning.VersionRange;
-import org.apache.maven.project.MavenProject;
-import org.apache.maven.project.MavenProjectHelper;
-import org.apache.maven.shared.filtering.MavenResourcesFiltering;
+import org.apache.maven.api.plugin.Log;
+import org.apache.maven.api.plugin.MojoException;
+import org.apache.maven.api.services.DependencyResolverResult;
 import org.apache.maven.shared.utils.cli.Commandline;
-import org.apache.maven.toolchain.ToolchainManager;
-import org.codehaus.plexus.languages.java.jpms.JavaModuleDescriptor;
-import org.codehaus.plexus.languages.java.jpms.LocationManager;
-import org.codehaus.plexus.languages.java.jpms.ResolvePathsRequest;
-import org.codehaus.plexus.languages.java.jpms.ResolvePathsResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.mock;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -60,23 +53,22 @@ class JLinkMojoTest {
     private JLinkMojo mojo;
 
     @Mock
-    private ToolchainManager toolchainManager;
+    private Log log;
 
     @Mock
-    private MavenProjectHelper projectHelper;
-
-    @Mock
-    private MavenResourcesFiltering mavenResourcesFiltering;
-
-    @Mock
-    private LocationManager locationManager;
+    private DependencyResolverResult resolved;
 
     @BeforeEach
     void setUp() throws Exception {
-        mojo = new JLinkMojo(projectHelper, toolchainManager, mavenResourcesFiltering, locationManager);
-        Field stripDebug = mojo.getClass().getDeclaredField("stripDebug");
-        stripDebug.setAccessible(true);
-        stripDebug.set(mojo, Boolean.TRUE);
+        mojo = new JLinkMojo();
+        setField(mojo.getClass().getSuperclass(), "log", log);
+        setField(mojo.getClass(), "stripDebug", Boolean.TRUE);
+    }
+
+    private void setField(Class<?> type, String name, Object value) throws Exception {
+        Field field = type.getDeclaredField(name);
+        field.setAccessible(true);
+        field.set(mojo, value);
     }
 
     @Test
@@ -116,117 +108,76 @@ class JLinkMojoTest {
     }
 
     @Test
-    void getCompileClasspathElementsShouldSkipPomTypeArtifacts() throws Exception {
-        // Given
-        MavenProject project = Mockito.mock(MavenProject.class);
-
-        Artifact pomArtifact = new DefaultArtifact(
-                "group",
-                "artifact-pom",
-                VersionRange.createFromVersion("1.0"),
-                "compile",
-                "pom",
-                null,
-                new DefaultArtifactHandler("pom"));
-
-        Artifact jarArtifact = new DefaultArtifact(
-                "group",
-                "artifact-jar",
-                VersionRange.createFromVersion("1.0"),
-                "compile",
-                "jar",
-                null,
-                new DefaultArtifactHandler("jar"));
-
-        File jarFile = new File("some.jar");
-        jarArtifact.setFile(jarFile);
-
-        when(project.getArtifacts()).thenReturn(Set.of(pomArtifact, jarArtifact));
-
-        // When
-        List<File> classpathElements = mojo.getCompileClasspathElements(project);
-
-        // Then
-        assertThat(classpathElements).containsExactly(jarFile).doesNotContainNull();
-    }
-
-    @Test
     void getModulePathElements() throws Exception {
-        File outputDirectory = new File("target/test-classes");
-        outputDirectory.mkdirs();
+        Path dependency = Path.of("target/test-classes/dependency.jar");
+        when(resolved.getPaths()).thenReturn(List.of(dependency));
+        when(resolved.getModuleDescriptor(dependency))
+                .thenReturn(
+                        Optional.of(ModuleDescriptor.newModule("test.module").build()));
 
-        MavenProject project = mock(MavenProject.class);
-        Artifact artifact = mock(Artifact.class);
-        when(artifact.getFile()).thenReturn(new File("target/test-classes/dependency.jar"));
-        when(project.getArtifacts()).thenReturn(Collections.singleton(artifact));
-        lenient().when(project.getBasedir()).thenReturn(new File("."));
+        Map<String, File> modulePathElements = mojo.getModulePathElements(resolved, new File("target/does-not-exist"));
 
-        JavaModuleDescriptor moduleDescriptor = mock(JavaModuleDescriptor.class);
-        when(moduleDescriptor.name()).thenReturn("test.module");
-        when(moduleDescriptor.isAutomatic()).thenReturn(false);
-
-        ResolvePathsResult<File> resolvePathsResult = mock(ResolvePathsResult.class);
-        when(resolvePathsResult.getPathElements())
-                .thenReturn(Collections.singletonMap(new File("target/test-classes/dependency.jar"), moduleDescriptor));
-        when(locationManager.resolvePaths(any(ResolvePathsRequest.class))).thenReturn(resolvePathsResult);
-
-        Field projectField = mojo.getClass().getSuperclass().getDeclaredField("project");
-        projectField.setAccessible(true);
-        projectField.set(mojo, project);
-
-        Field outputDirectoryField = mojo.getClass().getDeclaredField("outputDirectory");
-        outputDirectoryField.setAccessible(true);
-        outputDirectoryField.set(mojo, outputDirectory);
-
-        Map<String, File> modulePathElements = mojo.getModulePathElements();
-
-        assertThat(modulePathElements).hasSize(1);
-        assertThat(modulePathElements).containsKey("test.module");
-        assertThat(modulePathElements.get("test.module")).isEqualTo(new File("target/test-classes/dependency.jar"));
+        assertThat(modulePathElements).containsOnlyKeys("test.module");
+        assertThat(modulePathElements.get("test.module")).isEqualTo(dependency.toFile());
     }
 
     @Test
     void ignoreAutomaticModules() throws Exception {
-        File outputDirectory = new File("target/test-classes");
-        outputDirectory.mkdirs();
+        Path valid = Path.of("target/test-classes/dependency1.jar");
+        Path automatic = Path.of("target/test-classes/dependency2.jar");
+        when(resolved.getPaths()).thenReturn(List.of(valid, automatic));
+        when(resolved.getModuleDescriptor(valid))
+                .thenReturn(
+                        Optional.of(ModuleDescriptor.newModule("valid.module").build()));
+        when(resolved.getModuleDescriptor(automatic))
+                .thenReturn(Optional.of(
+                        ModuleDescriptor.newAutomaticModule("automatic.module").build()));
 
-        MavenProject project = mock(MavenProject.class);
-        Artifact artifact1 = mock(Artifact.class);
-        when(artifact1.getFile()).thenReturn(new File("target/test-classes/dependency1.jar"));
-        Artifact artifact2 = mock(Artifact.class);
-        when(artifact2.getFile()).thenReturn(new File("target/test-classes/dependency2.jar"));
+        Map<String, File> modulePathElements = mojo.getModulePathElements(resolved, new File("target/does-not-exist"));
 
-        when(project.getArtifacts()).thenReturn(Set.of(artifact1, artifact2));
-        lenient().when(project.getBasedir()).thenReturn(new File("."));
+        assertThat(modulePathElements).containsOnlyKeys("valid.module");
+    }
 
-        JavaModuleDescriptor moduleDescriptor1 = mock(JavaModuleDescriptor.class);
-        when(moduleDescriptor1.name()).thenReturn("valid.module");
-        when(moduleDescriptor1.isAutomatic()).thenReturn(false);
+    @Test
+    void projectClassesAreReadFromTheirModuleInfo(@TempDir Path dir) throws Exception {
+        Path source = Files.writeString(dir.resolve("module-info.java"), "module the.project {}");
+        Path classes = Files.createDirectory(dir.resolve("classes"));
+        int exit =
+                ToolProvider.getSystemJavaCompiler().run(null, null, null, "-d", classes.toString(), source.toString());
+        assertThat(exit).isZero();
+        when(resolved.getPaths()).thenReturn(List.of());
 
-        JavaModuleDescriptor moduleDescriptor2 = mock(JavaModuleDescriptor.class);
-        when(moduleDescriptor2.name()).thenReturn("automatic.module");
-        when(moduleDescriptor2.isAutomatic()).thenReturn(true);
+        Map<String, File> modulePathElements = mojo.getModulePathElements(resolved, classes.toFile());
 
-        ResolvePathsResult<File> resolvePathsResult = mock(ResolvePathsResult.class);
-        when(resolvePathsResult.getPathElements())
-                .thenReturn(Map.of(
-                        new File("target/test-classes/dependency1.jar"), moduleDescriptor1,
-                        new File("target/test-classes/dependency2.jar"), moduleDescriptor2));
+        assertThat(modulePathElements).containsOnlyKeys("the.project");
+    }
 
-        when(locationManager.resolvePaths(any(ResolvePathsRequest.class))).thenReturn(resolvePathsResult);
+    @Test
+    void failWhenProjectClassesHaveNoModuleInfo(@TempDir Path dir) throws Exception {
+        when(resolved.getPaths()).thenReturn(List.of());
 
-        Field projectField = mojo.getClass().getSuperclass().getDeclaredField("project");
-        projectField.setAccessible(true);
-        projectField.set(mojo, project);
+        assertThatThrownBy(() -> mojo.getModulePathElements(resolved, dir.toFile()))
+                .isInstanceOf(MojoException.class)
+                .hasMessageContaining("does not contain a module-info.java file");
+    }
 
-        Field outputDirectoryField = mojo.getClass().getDeclaredField("outputDirectory");
-        outputDirectoryField.setAccessible(true);
-        outputDirectoryField.set(mojo, outputDirectory);
+    @Test
+    void ignoreJarWithoutModuleDescriptor(@TempDir Path dir) throws Exception {
+        Path plain = Files.createFile(dir.resolve("plain.jar"));
+        when(resolved.getPaths()).thenReturn(List.of(plain));
+        when(resolved.getModuleDescriptor(plain)).thenReturn(Optional.empty());
 
-        Map<String, File> modulePathElements = mojo.getModulePathElements();
+        assertThat(mojo.getModulePathElements(resolved, new File("target/does-not-exist")))
+                .isEmpty();
+    }
 
-        assertThat(modulePathElements).hasSize(1);
-        assertThat(modulePathElements).containsKey("valid.module");
-        assertThat(modulePathElements).doesNotContainKey("automatic.module");
+    @Test
+    void failWhenDirectoryHasNoModuleDescriptor(@TempDir Path dir) throws Exception {
+        when(resolved.getPaths()).thenReturn(List.of(dir));
+        when(resolved.getModuleDescriptor(dir)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> mojo.getModulePathElements(resolved, new File("target/does-not-exist")))
+                .isInstanceOf(MojoException.class)
+                .hasMessageContaining("does not have a module-info.java file");
     }
 }

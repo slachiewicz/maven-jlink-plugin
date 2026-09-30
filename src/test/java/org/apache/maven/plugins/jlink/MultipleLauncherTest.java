@@ -24,7 +24,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.api.plugin.MojoException;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class MultipleLauncherTest {
 
-    private JLinkMojo mojo = new JLinkMojo(null, null, null, null);
+    private JLinkMojo mojo = new JLinkMojo();
 
     @Test
     void singleLauncher() throws Exception {
@@ -87,7 +87,7 @@ class MultipleLauncherTest {
         launchers.set(mojo, List.of("l1=com.example.Launch1", "l2=com.example.Launch2"));
 
         // When
-        assertThatThrownBy(() -> mojo.createJlinkArgs(List.of(), List.of())).isInstanceOf(MojoExecutionException.class);
+        assertThatThrownBy(() -> mojo.createJlinkArgs(List.of(), List.of())).isInstanceOf(MojoException.class);
     }
 
     // Helper function - gather all the classes named by --launcher args
